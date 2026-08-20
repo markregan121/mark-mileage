@@ -1,0 +1,77 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#111827"><title>Mark Mileage</title><style>body{margin:0;background:#f4f5f7;color:#111827;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}header{background:#111827;color:white;padding:20px 16px}main{max-width:700px;margin:auto;padding:14px}.card{background:#fff;border-radius:16px;padding:16px;margin-bottom:14px;box-shadow:0 2px 12px #0001}h1{margin:0;font-size:26px}h2{font-size:18px}label{display:block;font-weight:700;margin:10px 0 5px}input{width:100%;box-sizing:border-box;padding:13px;border:1px solid #ccc;border-radius:10px;font-size:16px}button{width:100%;padding:14px;margin-top:10px;border:0;border-radius:11px;background:#111827;color:white;font-size:16px;font-weight:700}.green{background:#166534}.red{background:#fee2e2;color:#991b1b}.gray{background:#e5e7eb;color:#111827}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.job,.scan{border:1px solid #ddd;border-radius:12px;padding:12px;margin-top:10px}.meta{font-size:13px;color:#666;margin-top:5px}.status{padding:10px;background:#f3f4f6;border-radius:10px;margin-top:10px}.preview{max-width:100%;max-height:360px;display:block;margin-top:10px;border-radius:10px}.hide{display:none}@media(max-width:480px){.grid{grid-template-columns:1fr}}</style></head><body><header><h1>Mark Mileage</h1><div>70-line claim • General Plumbing</div></header><main>
+<section class="card"><h2>➕ Add Job</h2><div class="grid"><div><label>Date</label><input id="date" type="date"></div><div><label>Round-trip KM</label><input id="km" type="number" step="0.1" min="0" placeholder="e.g. 12.5"></div></div><label>Job address</label><input id="address" placeholder="Enter job address"><label>Reason</label><input value="General Plumbing" readonly><button id="add">ADD JOB</button><div id="status" class="status hide"></div></section>
+<section class="card"><h2>📷 Diary Photo</h2><div>Take a clear photo of the diary. The app will read the text and show you the detected jobs so you can correct them before saving.</div><input id="photo" type="file" accept="image/*" capture="environment"><img id="preview" class="preview hide"><button id="scan" disabled>🔎 SCAN DIARY</button><div id="ocr" class="status hide"></div><div id="scans"></div><button id="addScans" class="green hide">ADD SCANNED JOBS</button></section>
+<section class="card"><h2>📋 Jobs <span id="count">(0)</span></h2><div id="jobs">No jobs yet.</div><button id="claim" class="gray">📄 MAKE CLAIM</button><button id="csv" class="gray">⬇️ CSV</button><button id="clear" class="red">CLEAR ALL JOBS</button></section></main>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script><script>(function(){const $=id=>document.getElementById(id),K='MARK_MILEAGE_V2_JOBS';let jobs=[];try{jobs=JSON.parse(localStorage.getItem(K)||'[]')}catch(e){}if(!Array.isArray(jobs))jobs=[];const today=()=>new Date().toISOString().slice(0,10);$('date').value=today();const save=()=>localStorage.setItem(K,JSON.stringify(jobs));const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));function render(){$('count').textContent='('+jobs.length+')';$('jobs').innerHTML=jobs.length?jobs.map((j,i)=>'<div class="job"><b>'+esc(j.address)+'</b><div class="meta">'+j.date+' • '+Number(j.km).toFixed(1)+' km • NCOD → job → NCOD</div><div class="meta">Reason: General Plumbing</div><button class="red" data-del="'+i+'">REMOVE</button></div>').join(''):'No jobs yet.';document.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{jobs.splice(+b.dataset.del,1);save();render()})}function msg(t){$('status').textContent=t;$('status').classList.remove('hide')}function ocr(t){$('ocr').textContent=t;$('ocr').classList.remove('hide')}$('add').onclick=()=>{let a=$('address').value.trim(),k=Number($('km').value);if(!a)return msg('Enter the job address first.');if(!k||k<=0)return msg('Enter the round-trip KM.');jobs.push({date:$('date').value||today(),address:a,km:k,eircode:'',reason:'General Plumbing'});save();render();$('address').value='';$('km').value='';msg('✅ Job added successfully.')};$('clear').onclick=()=>{if(confirm('Clear all saved jobs?')){jobs=[];save();render()}};
+$('photo').onchange=()=>{let f=$('photo').files[0];if(!f)return;$('preview').src=URL.createObjectURL(f);$('preview').classList.remove('hide');$('scan').disabled=false;ocr('Photo ready — tap SCAN DIARY.')};let scanned=[];
+function cleanOcrLine(s){return s.replace(/[|¦]/g,'I').replace(/\s+/g,' ').replace(/^[\s•·\-–—:]+/,'').trim()}
+function dateLine(s){return /^(?:(?:0?[1-9]|[12]\d|3[01])[\/\-.](?:0?[1-9]|1[0-2])(?:[\/\-.](?:20)?\d{2})?|(?:20)\d{2}[\/\-.](?:0?[1-9]|1[0-2])[\/\-.](?:0?[1-9]|[12]\d|3[01]))$/.test(s)}
+function noiseLine(s){let x=s.toLowerCase();return s.length<4||/^(mon|monday|tue|tuesday|wed|wednesday|thu|thursday|fri|friday|sat|saturday|sun|sunday)$/.test(x)||/^(jobs?|diary|mileage|travel|general plumbing|ncod|total|km|kilometres?|done|complete)$/.test(x)||/^[\d\W_]+$/.test(s)}
+function addressLike(s){return /(road|rd|street|st|avenue|ave|drive|dr|close|lane|ln|park|place|pl|court|ct|crescent|grove|way|terrace|square|view|gardens?|hill|station|quay|main|church|green|estate|industrial|business|unit|house|cottage|farm|townland|dublin|tallaght|clondalkin|swords|lucan|naas|maynooth|bray|celbridge|leixlip|blanchardstown)/i.test(s)||/\b\d{1,4}\s+[A-Za-z]/.test(s)}
+function dateFrom(s,fallback){let m=s.match(/\b(\d{1,2})[\/\-.](\d{1,2})(?:[\/\-.](\d{2,4}))?\b/);if(!m)return fallback;let y=m[3]?+m[3]:new Date().getFullYear();if(y<100)y+=2000;return y+'-'+String(+m[2]).padStart(2,'0')+'-'+String(+m[1]).padStart(2,'0')}
+
+function diaryHeaderDate(lines){
+  // Recognise the diary's printed page heading, e.g. "AUGUST 20 ... 2026".
+  const months={january:1,february:2,march:3,april:4,may:5,june:6,july:7,august:8,september:9,october:10,november:11,december:12};
+  for(const raw of lines){
+    const x=cleanOcrLine(raw).toLowerCase();
+    const m=x.match(/\b(january|february|march|april|may|june|july|august|september|october|november|december)\b[^\d]{0,10}(\d{1,2})\b/);
+    if(m){
+      let y=(x.match(/\b20\d{2}\b/)||[])[0]||String(new Date().getFullYear());
+      return `${y}-${String(months[m[1]]).padStart(2,"0")}-${String(+m[2]).padStart(2,"0")}`;
+    }
+  }
+  return null;
+}
+function isJobNumber(s){
+  // The red handwritten numbers under the jobs are job/reference numbers,
+  // not addresses. Ignore numeric-only OCR lines.
+  return /^\s*[\d\s.,-]{4,}\s*$/.test(s);
+}
+function stripTimePrefix(s){
+  return s.replace(/^(?:0?[1-9]|1[0-2])(?::[0-5]\d)?\s*(?:AM|PM)?\s*/i,"").trim();
+}
+function cleanDiaryJobLine(s){
+  let x=cleanOcrLine(s);
+  x=stripTimePrefix(x);
+  x=x.replace(/^[\d\s]{0,3}(?=[A-Za-z])/,"").trim();
+  return x;
+}
+
+function diaryParse(lines){
+ let out=[], d=diaryHeaderDate(lines)||$('date').value||today();
+ for(let raw of lines){
+   let x=cleanOcrLine(raw);
+   if(!x||isJobNumber(x)||noiseLine(x)) continue;
+
+   // Printed hourly times mark the start of each diary entry.
+   x=cleanDiaryJobLine(x);
+   if(!x||isJobNumber(x)||noiseLine(x)) continue;
+
+   // Ignore printed calendar/header fragments.
+   if(/^(august|september|october|november|december|january|february|march|april|may|june|july)\b/i.test(x)) continue;
+   if(/\b20\d{2}\b/.test(x)&&x.length<25) continue;
+
+   // If OCR has attached a numeric job/reference number to an address line,
+   // remove a trailing numeric-only token.
+   x=x.replace(/\s+\d{4,10}\s*$/,"").trim();
+   if(!x) continue;
+
+   // Prefer lines that look like an actual address/job. For this diary,
+   // street names are the useful anchor; descriptions after '-' stay attached.
+   if(addressLike(x)){
+     out.push({date:d,address:x,km:""});
+   }else if(out.length && x.length<70){
+     // Continuation of the previous job description.
+     out[out.length-1].address += " " + x;
+   }
+ }
+ // Remove accidental duplicates caused by OCR.
+ const seen=new Set();
+ return out.filter(j=>{
+   const k=j.date+"|"+j.address.toLowerCase().replace(/\W+/g," ");
+   if(seen.has(k)) return false; seen.add(k); return true;
+ });
+}
+$('scan').onclick=async()=>{let f=$('photo').files[0];if(!f)return;$('scan').disabled=true;ocr('🔎 Reading diary…');try{if(!window.Tesseract)throw Error('OCR engine did not load.');let w=await Tesseract.createWorker('eng',1,{logger:m=>{if(m.status)ocr('🔎 '+m.status+(m.progress?' '+Math.round(m.progress*100)+'%':''))}});let r=await w.recognize(f);await w.terminate();let lines=(r.data.text||'').split(/\r?\n/);scanned=diaryParse(lines);$('scans').innerHTML=scanned.length?'<p class="hint"><b>Detected '+scanned.length+' possible job(s).</b> Check each address and enter KM before adding.</p>'+scanned.map((j,i)=>'<div class="scan"><b>Job '+(i+1)+'</b><div class="grid"><div><label>Date</label><input data-d="'+i+'" type="date" value="'+j.date+'"></div><div><label>KM</label><input data-k="'+i+'" type="number" step="0.1" placeholder="Round-trip KM"></div></div><label>Address / job</label><input data-a="'+i+'" value="'+esc(j.address)+'"><div class="meta">General Plumbing • NCOD → job → NCOD</div></div>').join(''):'<div class="status">No jobs detected. Try a clearer photo.';if(scanned.length)$('addScans').classList.remove('hide');ocr('✅ Scan complete — check the jobs below.')}catch(e){ocr('❌ Scan failed: '+e.message)}$('scan').disabled=false};
+$('addScans').onclick=()=>{let n=0;scanned.forEach((_,i)=>{let a=document.querySelector('[data-a="'+i+'"]').value.trim(),k=Number(document.querySelector('[data-k="'+i+'"]').value),d=document.querySelector('[data-d="'+i+'"]').value||today();if(a&&k>0){jobs.push({date:d,address:a,km:k,eircode:'',reason:'General Plumbing'});n++}});save();render();$('scans').innerHTML='';$('addScans').classList.add('hide');msg('✅ '+n+' scanned job(s) added.')};$('csv').onclick=()=>{if(!jobs.length)return msg('Add at least one job first.');let s='Date,From,Job Address,Eircode,Reason for Travel,KM\n'+jobs.map(j=>[j.date,'NCOD',j.address,j.eircode,'General Plumbing',j.km].map(v=>'"'+String(v).replaceAll('"','""')+'"').join(',')).join('\n');let a=document.createElement('a');a.href=URL.createObjectURL(new Blob([s],{type:'text/csv'}));a.download='Mark_Mileage.csv';a.click()};$('claim').onclick=()=>{if(!jobs.length)return msg('Add at least one job first.');let r='';for(let i=0;i<70;i++){let j=jobs[i];r+='<tr><td>'+(i+1)+'</td><td>'+(j?j.date:'')+'</td><td>'+(j?'NCOD':'')+'</td><td>'+(j?esc(j.address):'')+'</td><td>'+(j?esc(j.eircode):'')+'</td><td>'+(j?'General Plumbing':'')+'</td><td>'+(j?Number(j.km).toFixed(1):'')+'</td></tr>'}let d='<html><body><h2>Mark Regan Mileage Claim</h2><p>Starting / ending point: NCOD</p><table border="1"><tr><th>No.</th><th>Date</th><th>From</th><th>Job / To</th><th>Eircode</th><th>Reason</th><th>KM</th></tr>'+r+'</table></body></html>';let a=document.createElement('a');a.href=URL.createObjectURL(new Blob([d],{type:'application/msword'}));a.download='Mark_Regan_Mileage_Claim.doc';a.click()};render()})();</script></body></html>
